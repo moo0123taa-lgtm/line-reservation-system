@@ -1,0 +1,171 @@
+{
+  "settings": {
+    "storeName": "Beauty Salon LINE",
+    "storePhone": "03-1234-5678",
+    "storeAddress": "東京都渋谷区道玄坂1-2-3",
+    "openTime": "10:00",
+    "closeTime": "20:00",
+    "slotIntervalMinutes": 30,
+    "maxConcurrentReservations": 1,
+    "closedDaysOfWeek": [
+      2
+    ],
+    "specialHolidays": [],
+    "liffId": "",
+    "lineChannelAccessToken": "",
+    "lineChannelSecret": ""
+  },
+  "menus": [
+    {
+      "id": "menu-1",
+      "name": "デザインカット",
+      "category": "カット",
+      "price": 5500,
+      "durationMinutes": 60,
+      "description": "カウンセリング重視で骨格に合わせた似合わせカット＆シャンプー・ブロー付き。",
+      "isAvailable": true,
+      "order": 1
+    },
+    {
+      "id": "menu-2",
+      "name": "オーガニックカラー＋カット",
+      "category": "カラー",
+      "price": 11000,
+      "durationMinutes": 120,
+      "description": "髪と頭皮に優しいオーガニックカラー剤を使用。カット＆集中トリートメント付き。",
+      "isAvailable": true,
+      "order": 2
+    },
+    {
+      "id": "menu-3",
+      "name": "プレミアム髪質改善トリートメント",
+      "category": "トリートメント",
+      "price": 8800,
+      "durationMinutes": 60,
+      "description": "高濃度ケラチンとヒアルロン酸で芯から潤う極上の艶髪へ導きます。シャンプー・ブロー込。",
+      "isAvailable": true,
+      "order": 3
+    },
+    {
+      "id": "menu-4",
+      "name": "アロマ極上ヘッドスパ（30分コース）",
+      "category": "スパ",
+      "price": 4400,
+      "durationMinutes": 30,
+      "description": "天然精油のアロマで頭皮のコリと眼精疲労をじっくりほぐすリフレッシュコース。",
+      "isAvailable": true,
+      "order": 4
+    },
+    {
+      "id": "menu-5",
+      "name": "【初回限定】フルコース（カット＋カラー＋極上スパ）",
+      "category": "セット",
+      "price": 14500,
+      "durationMinutes": 150,
+      "description": "当サロン自慢のフルメニューを贅沢に体験できるお得なセットコースです。",
+      "isAvailable": true,
+      "order": 5
+    }
+  ],
+  "reservations": [
+    {
+      "id": "res-sample-1",
+      "reservationNumber": "R20261001-001",
+      "customerName": "山田 太郎",
+      "customerPhone": "090-1234-5678",
+      "customerEmail": "yamada@example.com",
+      "customerLineId": "U1234567890sample",
+      "customerLineName": "Taro Yamada",
+      "menuIds": [
+        "menu-1"
+      ],
+      "menuNames": [
+        "デザインカット"
+      ],
+      "totalPrice": 5500,
+      "totalDuration": 60,
+      "date": "2026-10-01",
+      "startTime": "13:00",
+      "endTime": "14:00",
+      "status": "confirmed",
+      "note": "襟足をすっきりめでお願いします。",
+      "createdAt": "2026-10-01T04:16:50.653Z",
+      "updatedAt": "2026-10-01T04:16:50.653Z"
+    },
+    {
+      "id": "res-sample-2",
+      "reservationNumber": "R20261001-002",
+      "customerName": "佐藤 花子",
+      "customerPhone": "080-9876-5432",
+      "customerLineId": "U9876543210sample",
+      "customerLineName": "Hanako S",
+      "menuIds": [
+        "menu-3"
+      ],
+      "menuNames": [
+        "プレミアム髪質改善トリートメント"
+      ],
+      "totalPrice": 8800,
+      "totalDuration": 60,
+      "date": "2026-10-01",
+      "startTime": "16:00",
+      "endTime": "17:00",
+      "status": "confirmed",
+      "note": "",
+      "createdAt": "2026-10-01T04:16:50.653Z",
+      "updatedAt": "2026-10-01T04:16:50.653Z"
+    },
+    {
+      "customerName": "?????",
+      "customerPhone": "090-1111-2222",
+      "customerEmail": "",
+      "customerLineId": "",
+      "customerLineName": "",
+      "customerLinePicture": "",
+      "menuIds": [
+        "menu-1"
+      ],
+      "menuNames": [
+        "???????"
+      ],
+      "totalPrice": 5500,
+      "totalDuration": 60,
+      "date": "2026-10-05",
+      "startTime": "10:00",
+      "endTime": "11:00",
+      "status": "confirmed",
+      "note": "",
+      "id": "res-1790828222733-wixq1",
+      "reservationNumber": "R20261005-001",
+      "createdAt": "2026-10-01T04:17:02.733Z",
+      "updatedAt": "2026-10-01T04:17:02.733Z"
+    },
+    {
+      "customerName": "織田尭",
+      "customerPhone": "09086633818",
+      "customerEmail": "moo.0123.taa@gmail.com",
+      "customerLineId": "",
+      "customerLineName": "",
+      "customerLinePicture": "",
+      "menuIds": [
+        "menu-3",
+        "menu-4"
+      ],
+      "menuNames": [
+        "プレミアム髪質改善トリートメント",
+        "アロマ極上ヘッドスパ（30分コース）"
+      ],
+      "totalPrice": 13200,
+      "totalDuration": 90,
+      "date": "2026-10-15",
+      "startTime": "12:30",
+      "endTime": "14:00",
+      "status": "confirmed",
+      "note": "",
+      "id": "res-1790828559007-ziptn",
+      "reservationNumber": "R20261015-001",
+      "createdAt": "2026-10-01T04:22:39.007Z",
+      "updatedAt": "2026-10-01T04:22:39.007Z"
+    }
+  ]
+}
