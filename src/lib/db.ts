@@ -8,8 +8,11 @@ interface DatabaseData {
   reservations: Reservation[];
 }
 
-const DATA_DIR = path.join(process.cwd(), 'data');
+// Vercelサーバーレス環境（読み取り専用ファイルシステム）とローカル環境の両方に対応
+const isVercel = process.env.VERCEL === '1' || !!process.env.AWS_LAMBDA_FUNCTION_NAME;
+const DATA_DIR = isVercel ? '/tmp' : path.join(process.cwd(), 'data');
 const DATA_FILE = path.join(DATA_DIR, 'store.json');
+const SEED_FILE = path.join(process.cwd(), 'data', 'store.json');
 
 // 初期設定
 const defaultSettings: StoreSettings = {
@@ -19,15 +22,15 @@ const defaultSettings: StoreSettings = {
   openTime: '10:00',
   closeTime: '20:00',
   slotIntervalMinutes: 30,
-  maxConcurrentReservations: 1, // 1枠あたり最大1名（マンツーマンまたは席数制限）
-  closedDaysOfWeek: [2],        // 毎週火曜日が定休日
+  maxConcurrentReservations: 1,
+  closedDaysOfWeek: [2],
   specialHolidays: [],
   liffId: process.env.NEXT_PUBLIC_LIFF_ID || '',
   lineChannelAccessToken: process.env.LINE_CHANNEL_ACCESS_TOKEN || '',
   lineChannelSecret: process.env.LINE_CHANNEL_SECRET || '',
 };
 
-// 初期メニュー一覧（所要時間・料金・説明）
+// 初期メニュー一覧
 const defaultMenus: MenuItem[] = [
   {
     id: 'menu-1',
@@ -81,91 +84,74 @@ const defaultMenus: MenuItem[] = [
   },
 ];
 
-// 初期サンプル予約（本日のサンプル予約等）
 function getInitialReservations(): Reservation[] {
-  const today = new Date().toISOString().split('T')[0];
-  return [
-    {
-      id: 'res-sample-1',
-      reservationNumber: `R${today.replace(/-/g, '')}-001`,
-      customerName: '山田 太郎',
-      customerPhone: '090-1234-5678',
-      customerEmail: 'yamada@example.com',
-      customerLineId: 'U1234567890sample',
-      customerLineName: 'Taro Yamada',
-      menuIds: ['menu-1'],
-      menuNames: ['デザインカット'],
-      totalPrice: 5500,
-      totalDuration: 60,
-      date: today,
-      startTime: '13:00',
-      endTime: '14:00',
-      status: 'confirmed',
-      note: '襟足をすっきりめでお願いします。',
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    },
-    {
-      id: 'res-sample-2',
-      reservationNumber: `R${today.replace(/-/g, '')}-002`,
-      customerName: '佐藤 花子',
-      customerPhone: '080-9876-5432',
-      customerLineId: 'U9876543210sample',
-      customerLineName: 'Hanako S',
-      menuIds: ['menu-3'],
-      menuNames: ['プレミアム髪質改善トリートメント'],
-      totalPrice: 8800,
-      totalDuration: 60,
-      date: today,
-      startTime: '16:00',
-      endTime: '17:00',
-      status: 'confirmed',
-      note: '',
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    },
-  ];
+  return [];
 }
 
-// データベースの読み込み
-function readDb(): DatabaseData {
-  if (!fs.existsSync(DATA_DIR)) {
-    fs.mkdirSync(DATA_DIR, { recursive: true });
-  }
+// サーバーレス関数の実行中メモリキャッシュ
+declare global {
+  var __STORE_CACHE__: DatabaseData | undefined;
+}
 
-  if (!fs.existsSync(DATA_FILE)) {
-    const initialData: DatabaseData = {
-      settings: defaultSettings,
-      menus: defaultMenus,
-      reservations: getInitialReservations(),
-    };
-    fs.writeFileSync(DATA_FILE, JSON.stringify(initialData, null, 2), 'utf-8');
-    return initialData;
+// データベースの初期化・読み込み
+function readDb(): DatabaseData {
+  if (globalThis.__STORE_CACHE__) {
+    return globalThis.__STORE_CACHE__;
   }
 
   try {
-    const raw = fs.readFileSync(DATA_FILE, 'utf-8');
-    return JSON.parse(raw);
+    // 1. DATA_FILE (/tmp/store.json または data/store.json) が存在すればそれを読み込む
+    if (fs.existsSync(DATA_FILE)) {
+      const raw = fs.readFileSync(DATA_FILE, 'utf-8');
+      const data = JSON.parse(raw);
+      globalThis.__STORE_CACHE__ = data;
+      return data;
+    }
+
+    // 2. なければプロジェクト同梱の SEED_FILE (data/store.json) を読み込む
+    if (fs.existsSync(SEED_FILE)) {
+      const raw = fs.readFileSync(SEED_FILE, 'utf-8');
+      const data = JSON.parse(raw);
+      globalThis.__STORE_CACHE__ = data;
+      // Vercel環境なら /tmp にコピーしておく
+      if (isVercel) {
+        try {
+          fs.writeFileSync(DATA_FILE, raw, 'utf-8');
+        } catch (e) {
+          console.warn('[DB] Could not write seed to /tmp:', e);
+        }
+      }
+      return data;
+    }
   } catch (err) {
-    console.error('Failed to read database file, restoring defaults:', err);
-    const initialData: DatabaseData = {
-      settings: defaultSettings,
-      menus: defaultMenus,
-      reservations: getInitialReservations(),
-    };
-    fs.writeFileSync(DATA_FILE, JSON.stringify(initialData, null, 2), 'utf-8');
-    return initialData;
+    console.error('[DB] Failed to read store file, falling back to defaults:', err);
   }
+
+  // 3. どちらも無ければ初期データ
+  const initialData: DatabaseData = {
+    settings: defaultSettings,
+    menus: defaultMenus,
+    reservations: getInitialReservations(),
+  };
+  globalThis.__STORE_CACHE__ = initialData;
+  return initialData;
 }
 
-// データベースのアトミック書き込み
+// データベースの書き込み
 function writeDb(data: DatabaseData): void {
-  if (!fs.existsSync(DATA_DIR)) {
-    fs.mkdirSync(DATA_DIR, { recursive: true });
+  // まずインメモリキャッシュを即時更新（これによってAPIレスポンスは常に最新になる）
+  globalThis.__STORE_CACHE__ = data;
+
+  try {
+    if (!fs.existsSync(DATA_DIR)) {
+      fs.mkdirSync(DATA_DIR, { recursive: true });
+    }
+    const tempFile = `${DATA_FILE}.tmp.${Date.now()}`;
+    fs.writeFileSync(tempFile, JSON.stringify(data, null, 2), 'utf-8');
+    fs.renameSync(tempFile, DATA_FILE);
+  } catch (err) {
+    console.error('[DB] Write file error (in-memory remains updated):', err);
   }
-  const tempFile = `${DATA_FILE}.tmp.${Date.now()}`;
-  fs.writeFileSync(tempFile, JSON.stringify(data, null, 2), 'utf-8');
-  fs.renameSync(tempFile, DATA_FILE);
 }
 
 // 時間補助ユーティリティ (HH:mm -> 分数, 分数 -> HH:mm)
