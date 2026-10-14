@@ -179,6 +179,20 @@ export function updateStoreSettings(newSettings: Partial<StoreSettings>): StoreS
   return db.settings;
 }
 
+// 日付の休業日トグル（ワンタップで特定日を休業/営業日に切り替え）
+export function toggleSpecialHoliday(dateStr: string): { isHoliday: boolean; specialHolidays: string[] } {
+  const db = readDb();
+  const holidays = db.settings.specialHolidays || [];
+  const exists = holidays.includes(dateStr);
+  const updatedHolidays = exists
+    ? holidays.filter((d) => d !== dateStr)
+    : [...holidays, dateStr];
+
+  db.settings.specialHolidays = updatedHolidays;
+  writeDb(db);
+  return { isHoliday: !exists, specialHolidays: updatedHolidays };
+}
+
 // --- メニュー API ---
 export function getMenus(includeUnavailable = false): MenuItem[] {
   const db = readDb();
@@ -320,6 +334,60 @@ export function createReservation(
   writeDb(db);
 
   return { success: true, reservation: newReservation };
+}
+
+// ワンタップで特定の時間枠をブロック（受付停止）または解除
+export function toggleSlotBlock(
+  dateStr: string,
+  startTime: string,
+  endTime: string
+): { success: boolean; isBlocked: boolean; reservation?: Reservation; error?: string } {
+  const db = readDb();
+  
+  // すでにこの時間帯にブロック予約があるかチェック
+  const existingBlockIndex = db.reservations.findIndex(
+    (r) =>
+      r.date === dateStr &&
+      r.startTime === startTime &&
+      r.status === 'confirmed' &&
+      r.customerName.includes('【店舗ブロック】')
+  );
+
+  if (existingBlockIndex !== -1) {
+    // 既にブロックされている場合は解除（キャンセルステータスに変更、または配列から削除）
+    const removed = db.reservations.splice(existingBlockIndex, 1)[0];
+    writeDb(db);
+    return { success: true, isBlocked: false, reservation: removed };
+  }
+
+  // ブロックされていない場合は、店舗ブロック予約を新規作成して枠を埋める
+  const duration = timeToMinutes(endTime) - timeToMinutes(startTime);
+  const dateFormatted = dateStr.replace(/-/g, '');
+  const dailyCount = db.reservations.filter((r) => r.date === dateStr).length + 1;
+  const reservationNumber = `BLOCK-${dateFormatted}-${String(dailyCount).padStart(3, '0')}`;
+
+  const blockReservation: Reservation = {
+    id: `block-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+    reservationNumber,
+    customerName: '【店舗ブロック】受付停止',
+    customerPhone: '000-0000-0000',
+    menuIds: [],
+    menuNames: ['枠ブロック（店舗都合）'],
+    totalPrice: 0,
+    totalDuration: duration > 0 ? duration : db.settings.slotIntervalMinutes,
+    date: dateStr,
+    startTime,
+    endTime,
+    status: 'confirmed',
+    note: '店舗都合により受付を停止した枠です',
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  };
+
+  db.reservations.push(blockReservation);
+  writeDb(db);
+
+  return { success: true, isBlocked: true, reservation: blockReservation };
 }
 
 // --- 空き状況計算 API ---
